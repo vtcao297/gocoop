@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"encoding/json"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/fallais/gocoop/internal/services"
@@ -46,7 +47,6 @@ func NewMiscController(coopService services.CoopService) *MiscController {
 func (ctrl *MiscController) Index(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// Get the coop
 	coop := ctrl.coopService.GetCoop()
-	inTemp,inHumidity,outTemp,outHumidity,err := ctrl.coopService.GetTemp()
 
 	// Prepare the response
 	response := CoopResponse{
@@ -64,10 +64,6 @@ func (ctrl *MiscController) Index(w http.ResponseWriter, r *auth.AuthenticatedRe
 		Longitude:       coop.Longitude,
 		Status:          string(coop.Status),
 		IsAutomatic:     coop.IsAutomatic,
-		OutsideTemp:     outTemp,
-		OutsideHumidity: outHumidity,
-		InsideTemp:      inTemp,
-		InsideHumidity:	 inHumidity,
 		Cameras:         viper.GetStringMapString("cameras"),
 	}
 
@@ -270,4 +266,33 @@ func (ctrl *MiscController) StopCoopDoorManually(w http.ResponseWriter, r *auth.
 	//}
 
 	ctrl.Index(w, r)
+}
+
+func (ctrl *MiscController) GetCoopTemperature(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	inTemp,inHumidity,outTemp,outHumidity,err := ctrl.coopService.GetTemp()
+	if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+	data := struct {
+        InsideTemp     float32 `json:"InsideTemp"`
+        InsideHumidity float32 `json:"InsideHumidity"`
+        OutsideTemp    float32 `json:"OutsideTemp"`
+        OutsideHumidity float32 `json:"OutsideHumidity"`
+    } {
+        InsideTemp:     inTemp,
+        InsideHumidity: inHumidity,
+        OutsideTemp:    outTemp,
+        OutsideHumidity: outHumidity,
+    }
+
+    jsonData, err := json.Marshal(data)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.Write(jsonData)
 }

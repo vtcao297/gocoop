@@ -115,10 +115,10 @@
                 <div class="card bg-light">
                     <h5 class="card-header">Temperature</h5>
                     <div class="card-body">
-                        <p class="text-center"><b>Temp (F)     Outside Coop: </b> {{ .OutsideTemp }}</p>
-                        <p class="text-center"><b>Humidity (%RH)    Outside Coop: </b> {{ .OutsideHumidity }}</p>
-                        <p class="text-center"><b>Temp (F)     Inside Coop: </b> {{ .InsideTemp }}</p>
-                        <p class="text-center"><b>Humidity (%RH)    Inside Coop: </b> {{ .InsideHumidity}}</p>
+                        <p class="text-center"><b>Temp (F)     Outside Coop: </b> <span id="outsideTemp"></span></p>
+                        <p class="text-center"><b>Humidity (%RH)    Outside Coop: </b> <span id="outsideHumidity"></span></p>
+                        <p class="text-center"><b>Temp (F)     Inside Coop: </b> <span id="insideTemp"></span></p>
+                        <p class="text-center"><b>Humidity (%RH)    Inside Coop: </b> <span id="insideHumidity"></span></p>
                     </div>
                 </div>
             </div>
@@ -194,6 +194,30 @@
                 });
             });
         }
+
+        function updateCoopTemperature() {
+            fetch('/coop/temperature', { method: 'GET' })
+                .then(response => response.json())
+                .then(data => {
+                    const outsideTempElement = document.getElementById('outsideTemp');
+                    outsideTempElement.innerText = data.OutsideTemp;
+
+                    const outsideHumidityElement = document.getElementById('outsideHumidity');
+                    outsideHumidityElement.innerText = data.OutsideHumidity;
+
+                    const insideTempElement = document.getElementById('insideTemp');
+                    insideTempElement.innerText = data.InsideTemp;
+
+                    const insideHumidityElement = document.getElementById('insideHumidity');
+                    insideHumidityElement.innerText = data.InsideHumidity;
+                })
+                .catch(error => console.error(error));
+        }
+
+        // Call updateTemperature() once on page load to get initial data
+        updateCoopTemperature();
+
+        setInterval(updateCoopTemperature, 60000); // Update every 1 min
       </script>
 </body>
 </html>

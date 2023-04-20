@@ -114,6 +114,7 @@ func Run(cmd *cobra.Command, args []string) {
 	router.HandleFunc("/coop/open", authenticator.Wrap(miscCtrl.OpenCoopDoorManually))
 	router.HandleFunc("/coop/close", authenticator.Wrap(miscCtrl.CloseCoopDoorManually))
 	router.HandleFunc("/coop/stop", authenticator.Wrap(miscCtrl.StopCoopDoorManually))
+	router.HandleFunc("/coop/temperature", authenticator.Wrap(miscCtrl.GetCoopTemperature))
 	//http.Handle("/static/", fs)
 	//http.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
 	//http.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
