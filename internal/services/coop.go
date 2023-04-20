@@ -7,7 +7,7 @@ import (
 	"github.com/fallais/gocoop/pkg/coop/conditions"
 	"github.com/fallais/gocoop/pkg/coop/conditions/sunbased"
 	"github.com/fallais/gocoop/pkg/coop/conditions/timebased"
-
+	"github.com/fallais/gocoop/pkg/temperature"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +33,8 @@ const ErrCoopClosing = "The coop is closing"
 
 type coopService struct {
 	coop *coop.Coop
+	InTempSensor temperature.Temperature
+	OutTempSensor temperature.Temperature
 }
 
 //------------------------------------------------------------------------------
@@ -40,9 +42,11 @@ type coopService struct {
 //------------------------------------------------------------------------------
 
 // NewCoopService returns a new CoopService.
-func NewCoopService(coop *coop.Coop) CoopService {
-	return &coopService{
+func NewCoopService(coop *coop.Coop, indoorTemp temperature.Temperature, outsideTemp temperature.Temperature) CoopService {
+	return &coopService {
 		coop: coop,
+		InTempSensor: indoorTemp,
+		OutTempSensor: outsideTemp,
 	}
 }
 
@@ -51,7 +55,7 @@ func NewCoopService(coop *coop.Coop) CoopService {
 //------------------------------------------------------------------------------
 
 // Get returns the the coop.
-func (service *coopService) Get() *coop.Coop {
+func (service *coopService) GetCoop() *coop.Coop {
 	return service.coop
 }
 
@@ -142,4 +146,18 @@ func (service *coopService) Close() error {
 	}
 
 	return service.coop.Close()
+}
+
+func (service *coopService) GetTemp() (float32, float32, float32, float32, error) {
+	OutsideTemp, OutsideHumidity, err := service.OutTempSensor.ReadTemp()
+    if err != nil {
+        return 0,0,0,0,fmt.Errorf("Error reading temperature: %s\n", err.Error())
+    }
+
+	InsideTemp, InsideHumidity, err := service.InTempSensor.ReadTemp()
+    if err != nil {
+        return 0,0,0,0,fmt.Errorf("Error reading temperature: %s\n", err.Error())
+    }
+
+	return InsideTemp, InsideHumidity, OutsideTemp, OutsideHumidity, nil
 }

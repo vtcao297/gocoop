@@ -45,7 +45,8 @@ func NewMiscController(coopService services.CoopService) *MiscController {
 // Index is the index page.
 func (ctrl *MiscController) Index(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// Get the coop
-	coop := ctrl.coopService.Get()
+	coop := ctrl.coopService.GetCoop()
+	inTemp,inHumidity,outTemp,outHumidity,err := ctrl.coopService.GetTemp()
 
 	// Prepare the response
 	response := CoopResponse{
@@ -63,6 +64,10 @@ func (ctrl *MiscController) Index(w http.ResponseWriter, r *auth.AuthenticatedRe
 		Longitude:       coop.Longitude,
 		Status:          string(coop.Status),
 		IsAutomatic:     coop.IsAutomatic,
+		OutsideTemp:     outTemp,
+		OutsideHumidity: outHumidity,
+		InsideTemp:      inTemp,
+		InsideHumidity:	 inHumidity,
 		Cameras:         viper.GetStringMapString("cameras"),
 	}
 
@@ -92,7 +97,7 @@ func (ctrl *MiscController) Configuration(w http.ResponseWriter, r *auth.Authent
 
 func (ctrl *MiscController) getConfiguration(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	// Get the coop
-	coop := ctrl.coopService.Get()
+	coop := ctrl.coopService.GetCoop()
 
 	// Prepare the response
 	response := CoopResponse{
@@ -178,7 +183,7 @@ func (ctrl *MiscController) updateConfiguration(w http.ResponseWriter, r *auth.A
 	}
 
 	// Get the coop
-	coop := ctrl.coopService.Get()
+	coop := ctrl.coopService.GetCoop()
 
 	// Prepare the response
 	response := CoopResponse{
@@ -210,4 +215,59 @@ func (ctrl *MiscController) updateConfiguration(w http.ResponseWriter, r *auth.A
 
 	// Execute
 	t.Execute(w, response)
+}
+
+func (ctrl *MiscController) CloseCoopDoorManually(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	// Get the coop
+	coop := ctrl.coopService.GetCoop()
+
+	if(coop.IsAutomatic) {
+		logrus.Errorln("Coop is in Automatic Mode")
+		return
+	}
+
+	err := ctrl.coopService.Close()
+	if(err != nil) {
+		logrus.WithError(err).Errorln("Error in manually closing Coop Door")
+		return
+	}
+
+	ctrl.Index(w, r)
+}
+
+func (ctrl *MiscController) OpenCoopDoorManually(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	// Get the coop
+	coop := ctrl.coopService.GetCoop()
+
+	if(coop.IsAutomatic) {
+		logrus.Errorln("Coop is in Automatic Mode")
+		return
+	}
+
+	err := ctrl.coopService.Open()
+	if(err != nil) {
+		logrus.WithError(err).Errorln("Error in manually opeing Coop Door")
+		return
+	}
+
+	ctrl.Index(w, r)
+}
+
+func (ctrl *MiscController) StopCoopDoorManually(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	// Get the coop
+	coop := ctrl.coopService.GetCoop()
+
+	if(coop.IsAutomatic) {
+		logrus.Errorln("Coop is in Automatic Mode")
+		return
+	}
+
+	//TDB: need to expose
+	//err := ctrl.coopService.Stop()
+	//if(err != nil) {
+	//	logrus.WithError(err).Errorln("Error in manually stopping Coop Door")
+	//	return
+	//}
+
+	ctrl.Index(w, r)
 }

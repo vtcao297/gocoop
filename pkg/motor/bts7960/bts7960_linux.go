@@ -6,7 +6,7 @@ package bts7960
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/sirupsen/logrus"
 	"github.com/stianeikeland/go-rpio/v4"
 )

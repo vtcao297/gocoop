@@ -10,8 +10,9 @@ import (
 
 // CoopService is the interface
 type CoopService interface {
-	Get() *coop.Coop
+	GetCoop() *coop.Coop
 	Update(CoopUpdateRequest) error
 	Open() error
 	Close() error
+	GetTemp() (float32, float32, float32, float32, error)
 }

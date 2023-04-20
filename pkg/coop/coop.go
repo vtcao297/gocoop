@@ -9,6 +9,7 @@ import (
 	"github.com/fallais/gocoop/pkg/coop/conditions/timebased"
 	"github.com/fallais/gocoop/pkg/door"
 	"github.com/fallais/gocoop/pkg/notifiers"
+	//"github.com/stianeikeland/go-rpio/v4"
 	"github.com/spf13/viper"
 
 	"github.com/sirupsen/logrus"
@@ -37,7 +38,8 @@ type Coop struct {
 //------------------------------------------------------------------------------
 
 // New returns a new Coop with given latitude and longitude, a door, and options.
-func New(latitude, longitude float64, door door.Door, openingConditionMode, openingConditionValue, closingConditionMode, closingConditionValue string, notifiers []notifiers.Notifier, isAutomatic, notifyAtStartup bool) (*Coop, error) {
+func New(latitude, longitude float64, door door.Door, openingConditionMode, openingConditionValue, closingConditionMode, closingConditionValue string, 
+		 notifiers []notifiers.Notifier, isAutomatic, notifyAtStartup bool) (*Coop, error) {
 	// Check latitude and longtitude
 	if latitude == 0 && longitude == 0 {
 		return nil, ErrIncorrectPosition
@@ -240,7 +242,32 @@ func (coop *Coop) Check() {
 	// Process the status
 	switch coop.Status {
 	case Unknown:
-		logrus.Warningln("The status is unknown")
+		logrus.Warningln("The status is unknown, will try to mitigate...")
+		// openDoorLimitPin := viper.GetInt("door.stoplimit.open_pin")
+		// openlimitPin := rpio.Pin(openDoorLimitPin)
+		// //openlimitPin.Input()
+
+		// closeDoorLimitPin := viper.GetInt("door.stoplimit.close_pin")
+		// closelimitPin := rpio.Pin(closeDoorLimitPin)
+		// //closelimitPin.Input()
+
+		// // if openlimitPin.Read() == rpio.Low {
+		// // 	logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Opened State")
+		// // 	coop.Status = Opened
+		// // } else if closelimitPin.Read() == rpio.Low {
+		// // 	logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Closed State")
+		// // 	coop.Status = Closed
+		// // } else {
+		// // 	if we get here then it means the door is somewhere stuck in the middle
+		// // 	so let's close it to get to a good known state.
+		// // 	err := coop.close()
+		// // 	if err != nil {
+		// // 		logrus.Errorf("Error when closing the coop: %s", err)
+		// // 		return
+		// // 	}
+
+		// // 	logrus.Infoln("The coop has been closed")
+		// // }
 	case Opening:
 		logrus.Infoln("The coop is opening")
 	case Closing:

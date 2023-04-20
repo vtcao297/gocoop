@@ -18,5 +18,9 @@ type CoopResponse struct {
 	IsAutomatic      bool
 	NextOpeningTime  time.Time
 	NextClosingTime  time.Time
+	OutsideTemp      float32
+	OutsideHumidity	 float32
+	InsideTemp       float32
+	InsideHumidity	 float32
 	Cameras          map[string]string
 }

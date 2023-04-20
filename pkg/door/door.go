@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/fallais/gocoop/pkg/motor"
-
 	"github.com/sirupsen/logrus"
 )
 

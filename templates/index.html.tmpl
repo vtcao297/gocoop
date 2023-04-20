@@ -100,12 +100,25 @@
                     <div class="card-body">
                         {{ if not .IsAutomatic }}
                         <p class="text-center">
-                            <button class="btn btn-success mr-2">Open</button>
-                            <button class="btn btn-danger">Close</button>
+                            <button id="open-button" class="btn btn-success mr-2">Open</button>
+                            <button id="close-button" class="btn btn-danger">Close</button>
+                            <button id="stop-button" class="btn btn-danger">Stop</button>
                         </p>
                         {{ else }}
                         <p class="text-center text-danger"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> Automatic mode is enabled ! Cannot use the coop.</p>
                         {{ end }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 mb-4 col-md-6 col-lg-4">
+                <div class="card bg-light">
+                    <h5 class="card-header">Temperature</h5>
+                    <div class="card-body">
+                        <p class="text-center"><b>Temp (F)     Outside Coop: </b> {{ .OutsideTemp }}</p>
+                        <p class="text-center"><b>Humidity (%RH)    Outside Coop: </b> {{ .OutsideHumidity }}</p>
+                        <p class="text-center"><b>Temp (F)     Inside Coop: </b> {{ .InsideTemp }}</p>
+                        <p class="text-center"><b>Humidity (%RH)    Inside Coop: </b> {{ .InsideHumidity}}</p>
                     </div>
                 </div>
             </div>
@@ -123,5 +136,64 @@
             {{ end }}
         </div>
     </div>
+    <script>
+        const openButton = document.getElementById('open-button');
+        const closeButton = document.getElementById('close-button');
+        const stopButton = document.getElementById('stop-button');
+    
+        if(openButton) {
+            openButton.addEventListener('click', () => {
+            fetch('/coop/open', { method: 'POST' })
+                .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.text();
+                })
+                .then(responseText => {
+                console.log(responseText);
+                })
+                .catch(error => {
+                console.error(error);
+                });
+            });
+        }
+    
+        if(closeButton) {
+            closeButton.addEventListener('click', () => {
+            fetch('/coop/close', { method: 'POST' })
+                .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.text();
+                })
+                .then(responseText => {
+                console.log(responseText);
+                })
+                .catch(error => {
+                console.error(error);
+                });
+            });
+        }
+
+        if(stopButton) {
+            stopButton.addEventListener('click', () => {
+                fetch('/coop/stop', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(responseText => {
+                    console.log(responseText);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+            });
+        }
+      </script>
 </body>
 </html>

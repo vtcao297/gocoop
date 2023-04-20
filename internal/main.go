@@ -5,6 +5,7 @@ import (
 	"embed"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/fallais/gocoop/internal/routes"
 	"github.com/fallais/gocoop/internal/services"
@@ -14,11 +15,14 @@ import (
 	"github.com/fallais/gocoop/pkg/motor"
 	"github.com/fallais/gocoop/pkg/motor/bts7960"
 	"github.com/fallais/gocoop/pkg/motor/l293d"
+	"github.com/fallais/gocoop/pkg/motor/l298n"
+	"github.com/fallais/gocoop/pkg/temperature"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -52,6 +56,8 @@ func Run(cmd *cobra.Command, args []string) {
 		"type": viper.GetString("door.motor.type"),
 	}).Infoln("Creating the motor")
 	switch viper.GetString("door.motor.type") {
+	case "l298n":
+		motor = l298n.NewL298N(viper.GetInt("door.motor.pin_1A"), viper.GetInt("door.motor.pin_1B"), viper.GetInt("door.motor.pin_enable1"))
 	case "l293d":
 		motor = l293d.NewL293D(viper.GetInt("door.motor.pin_1A"), viper.GetInt("door.motor.pin_1B"), viper.GetInt("door.motor.pin_enable1"))
 	case "bts7960":
@@ -69,15 +75,21 @@ func Run(cmd *cobra.Command, args []string) {
 	// Notifiers
 	notifiers := system.SetupNotifiers()
 
+	// Temperatures
+	intempsensor := temperature.NewTemperature(viper.GetString("temperature.inside.name"), viper.GetString("temperature.inside.type"), viper.GetInt("temperature.inside.pin"), viper.GetBool("temperature.inside.boost"))
+	outtempsensor := temperature.NewTemperature(viper.GetString("temperature.outside.name"), viper.GetString("temperature.outside.type"), viper.GetInt("temperature.outside.pin"), viper.GetBool("temperature.outside.boost"))
+
 	// Create the coop instance
-	c, err := coop.New(viper.GetFloat64("coop.latitude"), viper.GetFloat64("coop.longitude"), d, viper.GetString("coop.opening.mode"), viper.GetString("coop.opening.value"), viper.GetString("coop.closing.mode"), viper.GetString("coop.closing.value"), notifiers, true, false)
+	c, err := coop.New(viper.GetFloat64("coop.latitude"), viper.GetFloat64("coop.longitude"), d, viper.GetString("coop.opening.mode"), 
+	                   viper.GetString("coop.opening.value"), viper.GetString("coop.closing.mode"), viper.GetString("coop.closing.value"), 
+					   notifiers, true, false)
 	if err != nil {
 		logrus.WithError(err).Fatalln("Error while creating the coop instance")
 	}
 
 	// Initialize Web controllers
 	logrus.Infoln("Initializing the services")
-	coopService := services.NewCoopService(c)
+	coopService := services.NewCoopService(c, intempsensor, outtempsensor)
 	logrus.Infoln("Successfully initialized the services")
 
 	// Initialize Web controllers
@@ -95,15 +107,30 @@ func Run(cmd *cobra.Command, args []string) {
 	fs := http.FileServer(staticFS)
 
 	// Handlers
-	http.Handle("/static/", fs)
-	http.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
-	http.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
+	router := mux.NewRouter()
+	router.PathPrefix("/static/").Handler(fs)
+	router.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
+	router.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
+	router.HandleFunc("/coop/open", authenticator.Wrap(miscCtrl.OpenCoopDoorManually))
+	router.HandleFunc("/coop/close", authenticator.Wrap(miscCtrl.CloseCoopDoorManually))
+	router.HandleFunc("/coop/stop", authenticator.Wrap(miscCtrl.StopCoopDoorManually))
+	//http.Handle("/static/", fs)
+	//http.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
+	//http.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
 
 	// Serve
+	addr := ":8000"
+	s := &http.Server{
+		Addr:           addr,
+		Handler:        router,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
 	logrus.WithFields(logrus.Fields{
-		"port": ":8000",
+		"port": addr,
 	}).Infoln("Starting the Web server")
-	err = http.ListenAndServe(":8000", nil)
+	err = s.ListenAndServe()
 	if err != nil {
 		logrus.WithError(err).Fatalln("Error while starting the Web server")
 	}
