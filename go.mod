@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/abbot/go-http-auth v0.4.0
-	github.com/cpucycle/astrotime v0.0.0-20120927164819-9c7d514efdb5
+	github.com/airmap/astrotime v0.0.2
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/schema v1.1.0
 	github.com/sirupsen/logrus v1.4.2

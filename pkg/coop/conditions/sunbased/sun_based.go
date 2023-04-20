@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/fallais/gocoop/pkg/coop/conditions"
-
-	"github.com/cpucycle/astrotime"
+	"github.com/airmap/astrotime"
 )
 
 //------------------------------------------------------------------------------

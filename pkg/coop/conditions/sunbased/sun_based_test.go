@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cpucycle/astrotime"
+	"github.com/airmap/astrotime"
 )
 
 const latitude = 43.525776
