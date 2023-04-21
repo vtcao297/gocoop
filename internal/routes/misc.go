@@ -75,6 +75,14 @@ func (ctrl *MiscController) Index(w http.ResponseWriter, r *auth.AuthenticatedRe
 
 	// Header
 	w.Header().Add("Content-Type", "text/html")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Del("Content-Security-Policy")
+	// w.Header().Add("Content-Security-Policy", "default-src 'self'; " +
+	//                "script-src 'nonce-bbX_-keWdmOq6KJeZOmrOoM_Tv1GnatIVGHikdP0xbY' 'self' 'unsafe-inline'; " +
+	// 			   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+	// 			   "img-src 'self' data:; " +
+	// 			   "media-src 'self' data:; " +
+	// 			   "script-src-elem 'self' 'unsafe-inline';")
 
 	// Execute
 	t.Execute(w, response)
@@ -122,6 +130,8 @@ func (ctrl *MiscController) getConfiguration(w http.ResponseWriter, r *auth.Auth
 
 	// Header
 	w.Header().Add("Content-Type", "text/html")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Del("Content-Security-Policy")
 
 	// Execute
 	t.Execute(w, response)
@@ -208,6 +218,8 @@ func (ctrl *MiscController) updateConfiguration(w http.ResponseWriter, r *auth.A
 
 	// Header
 	w.Header().Add("Content-Type", "text/html")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Del("Content-Security-Policy")
 
 	// Execute
 	t.Execute(w, response)
@@ -294,5 +306,8 @@ func (ctrl *MiscController) GetCoopTemperature(w http.ResponseWriter, r *auth.Au
     }
 
     w.Header().Set("Content-Type", "application/json")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Del("Content-Security-Policy")
+
     w.Write(jsonData)
 }

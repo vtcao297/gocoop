@@ -2,9 +2,11 @@ package internal
 
 import (
 	"bytes"
+	"fmt"
 	"embed"
 	"io/ioutil"
 	"net/http"
+	"crypto/tls"
 	"time"
 
 	"github.com/fallais/gocoop/internal/routes"
@@ -94,13 +96,24 @@ func Run(cmd *cobra.Command, args []string) {
 
 	// Initialize Web controllers
 	logrus.Infoln("Initializing the Web controllers")
-	//coopCtrl := routes.NewCoopController(coopService)
 	miscCtrl := routes.NewMiscController(coopService)
-	//securityCtrl := routes.NewSecurityController(viper.GetString("general.gui_username"), viper.GetString("general.gui_password"))
 	logrus.Infoln("Successfully initialized the Web controllers")
 
 	// Set the Basic authenticator
-	authenticator := auth.NewBasicAuthenticator("example.com", Secret)
+	authenticator := auth.NewBasicAuthenticator(viper.GetString("general.site"), Secret)
+
+	// Create a logout handler function that will be used to handle requests to the logout URL
+	logoutHandler := func(w http.ResponseWriter, r *http.Request) {
+		authRealm := viper.GetString("general.site")
+
+		// Send a 401 Unauthorized response to the client with a
+		// WWW-Authenticate header containing the authentication realm
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, authRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+
+		// Redirect the user to a blank page after logging out
+		http.Redirect(w, r, "about:blank", http.StatusSeeOther)
+	}
 
 	// Static files
 	var staticFS = http.FS(StaticFS)
@@ -109,20 +122,30 @@ func Run(cmd *cobra.Command, args []string) {
 	// Handlers
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(fs)
+	router.HandleFunc("/logout", logoutHandler)
 	router.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
 	router.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
 	router.HandleFunc("/coop/open", authenticator.Wrap(miscCtrl.OpenCoopDoorManually))
 	router.HandleFunc("/coop/close", authenticator.Wrap(miscCtrl.CloseCoopDoorManually))
 	router.HandleFunc("/coop/stop", authenticator.Wrap(miscCtrl.StopCoopDoorManually))
 	router.HandleFunc("/coop/temperature", authenticator.Wrap(miscCtrl.GetCoopTemperature))
-	//http.Handle("/static/", fs)
-	//http.HandleFunc("/", authenticator.Wrap(miscCtrl.Index))
-	//http.HandleFunc("/configuration", authenticator.Wrap(miscCtrl.Configuration))
+
+	// Load TLS certificate and private key
+	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
+	if err != nil {
+		logrus.WithError(err).Fatalln("failed to load TLS certificate and key")
+	}
+
+	// Create a new TLS configuration with the loaded certificate and key
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
 
 	// Serve
-	addr := ":8000"
+	addr := ":443"
 	s := &http.Server{
 		Addr:           addr,
+		TLSConfig: 		config,
 		Handler:        router,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -131,7 +154,7 @@ func Run(cmd *cobra.Command, args []string) {
 	logrus.WithFields(logrus.Fields{
 		"port": addr,
 	}).Infoln("Starting the Web server")
-	err = s.ListenAndServe()
+	err = s.ListenAndServeTLS("", "")
 	if err != nil {
 		logrus.WithError(err).Fatalln("Error while starting the Web server")
 	}
