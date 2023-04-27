@@ -148,15 +148,20 @@ func (service *coopService) Close() error {
 	return service.coop.Close()
 }
 
-func (service *coopService) GetTemp() (float32, float32, float32, float32, error) {
-	OutsideTemp, OutsideHumidity, err := service.OutTempSensor.ReadTemp()
-    if err != nil {
-        return 0,0,0,0,fmt.Errorf("Error reading temperature: %s\n", err.Error())
-    }
+// Close the Coop
+func (service *coopService) Stop() error {
+	return service.coop.Stop()
+}
 
+func (service *coopService) GetTemp() (float32, float32, float32, float32, error) {
 	InsideTemp, InsideHumidity, err := service.InTempSensor.ReadTemp()
     if err != nil {
-        return 0,0,0,0,fmt.Errorf("Error reading temperature: %s\n", err.Error())
+        return -1,-1,-1,-1,fmt.Errorf("Error reading temperature: %s\n", err.Error())
+    }
+
+	OutsideTemp, OutsideHumidity, err := service.OutTempSensor.ReadTemp()
+    if err != nil {
+        return -1,-1,-1,-1,fmt.Errorf("Error reading temperature: %s\n", err.Error())
     }
 
 	return InsideTemp, InsideHumidity, OutsideTemp, OutsideHumidity, nil

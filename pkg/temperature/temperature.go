@@ -91,7 +91,6 @@ func readDHTXX(sensorType SensorType, pin rpio.Pin, handShakeDur time.Duration )
 				level = rpio.High
 				// level changed to HIGH, sync cycle
 				syncCycles[pos] = uint16(now - lastChange)
-
 			} else {
 				level = rpio.Low
 				// level changed to LOW, data cycle
@@ -133,7 +132,7 @@ func readDHTXX(sensorType SensorType, pin rpio.Pin, handShakeDur time.Duration )
 
 	// verify checksum
 	if data[4] != ((data[0] + data[1] + data[2] + data[3]) & 0xFF) {
-		return 0, 0, errors.New("checksum error")
+		return -1, -1, errors.New("checksum error")
 	}
 
 	// calculate temperature and humidity
@@ -173,19 +172,19 @@ func (temp *temperature) ReadTemp() (float32, float32, error) {
 
 	switch temp.sensorType {
 	case "DHT11":
-		logrus.Infof("Type = DHT11")
+		logrus.Infof("Name = %v, Type = DHT11", temp.name)
 		sensorType = DHT11
 		handshakeDur = 18000 * time.Microsecond
 	case "DHT12":
-		logrus.Infof("Type = DHT12")
+		logrus.Infof("Name = %v, Type = DHT12", temp.name)
 		sensorType = DHT12
 		handshakeDur = 200000 * time.Microsecond
 	case "DHT22":
-		logrus.Infof("Type = DHT22")
+		logrus.Infof("Name = %v, Type = DHT22", temp.name)
 		sensorType = DHT22
 		handshakeDur = 18000 * time.Microsecond
 	case "AM2302":
-		logrus.Infof("Type = AM2302")
+		logrus.Infof("Name = %v, Type = AM2302", temp.name)
 		sensorType = AM2302
 		handshakeDur = 18000 * time.Microsecond
 	default:
@@ -199,9 +198,10 @@ func (temp *temperature) ReadTemp() (float32, float32, error) {
 	if err != nil {
 		return -1, -1, fmt.Errorf("Error opening GPIO: %s", err)
 	}
+	tempPin := rpio.Pin(temp.pin)
 
 	for {
-		sensorTemp, sensorHumidity, err := readDHTXX(sensorType, rpio.Pin(temp.pin), handshakeDur)
+		sensorTemp, sensorHumidity, err := readDHTXX(sensorType, tempPin, handshakeDur)
 		if err != nil {
 			if retry > 0 {
 				logrus.Warning(err)

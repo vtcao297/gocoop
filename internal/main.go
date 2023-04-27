@@ -82,14 +82,16 @@ func Run(cmd *cobra.Command, args []string) {
 	outtempsensor := temperature.NewTemperature(viper.GetString("temperature.outside.name"), viper.GetString("temperature.outside.type"), viper.GetInt("temperature.outside.pin"), viper.GetBool("temperature.outside.boost"))
 
 	// Create the coop instance
+	isAutomaticAtStartup := false
+	notifyAtStartup := false
 	c, err := coop.New(viper.GetFloat64("coop.latitude"), viper.GetFloat64("coop.longitude"), d, viper.GetString("coop.opening.mode"), 
 	                   viper.GetString("coop.opening.value"), viper.GetString("coop.closing.mode"), viper.GetString("coop.closing.value"), 
-					   notifiers, true, false)
+					   notifiers, isAutomaticAtStartup, notifyAtStartup)
 	if err != nil {
 		logrus.WithError(err).Fatalln("Error while creating the coop instance")
 	}
 
-	// Initialize Web controllers
+	// Initialize Service controllers
 	logrus.Infoln("Initializing the services")
 	coopService := services.NewCoopService(c, intempsensor, outtempsensor)
 	logrus.Infoln("Successfully initialized the services")
@@ -129,6 +131,7 @@ func Run(cmd *cobra.Command, args []string) {
 	router.HandleFunc("/coop/close", authenticator.Wrap(miscCtrl.CloseCoopDoorManually))
 	router.HandleFunc("/coop/stop", authenticator.Wrap(miscCtrl.StopCoopDoorManually))
 	router.HandleFunc("/coop/temperature", authenticator.Wrap(miscCtrl.GetCoopTemperature))
+	router.HandleFunc("/coop/camera/still", authenticator.Wrap(miscCtrl.ProcessCaptureRequest))
 
 	// Load TLS certificate and private key
 	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")

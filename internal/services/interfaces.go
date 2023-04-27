@@ -14,5 +14,6 @@ type CoopService interface {
 	Update(CoopUpdateRequest) error
 	Open() error
 	Close() error
+	Stop() error
 	GetTemp() (float32, float32, float32, float32, error)
 }

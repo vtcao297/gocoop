@@ -9,7 +9,7 @@ import (
 	"github.com/fallais/gocoop/pkg/coop/conditions/timebased"
 	"github.com/fallais/gocoop/pkg/door"
 	"github.com/fallais/gocoop/pkg/notifiers"
-	//"github.com/stianeikeland/go-rpio/v4"
+	"github.com/stianeikeland/go-rpio/v4"
 	"github.com/spf13/viper"
 
 	"github.com/sirupsen/logrus"
@@ -223,6 +223,20 @@ func (coop *Coop) close() error {
 	return nil
 }
 
+// Close closes the chicken coop.
+func (coop *Coop) Stop() error {
+	switch coop.Status {
+	case Opening:
+	case Closing:
+			return coop.door.Stop()
+	default:
+		logrus.Infoln("Nothing to be done for request: Stop Door")
+		return nil
+	}
+
+	return nil
+}
+
 // Check performs a check of the door of the chicken coop.
 func (coop *Coop) Check() {
 	// Check the automatic mode
@@ -242,32 +256,35 @@ func (coop *Coop) Check() {
 	// Process the status
 	switch coop.Status {
 	case Unknown:
-		logrus.Warningln("The status is unknown, will try to mitigate...")
-		// openDoorLimitPin := viper.GetInt("door.stoplimit.open_pin")
-		// openlimitPin := rpio.Pin(openDoorLimitPin)
-		// //openlimitPin.Input()
+		logrus.Warningln("The status is unknown")
+		if coop.IsAutomatic {
+			logrus.Infoln("Since it's Automatic Mode, will try to mitigate unknown state...")
+			openDoorLimitPin := viper.GetInt("door.stoplimit.open_pin")
+			openlimitPin := rpio.Pin(openDoorLimitPin)
+			openlimitPin.Input()
 
-		// closeDoorLimitPin := viper.GetInt("door.stoplimit.close_pin")
-		// closelimitPin := rpio.Pin(closeDoorLimitPin)
-		// //closelimitPin.Input()
+			closeDoorLimitPin := viper.GetInt("door.stoplimit.close_pin")
+			closelimitPin := rpio.Pin(closeDoorLimitPin)
+			closelimitPin.Input()
 
-		// // if openlimitPin.Read() == rpio.Low {
-		// // 	logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Opened State")
-		// // 	coop.Status = Opened
-		// // } else if closelimitPin.Read() == rpio.Low {
-		// // 	logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Closed State")
-		// // 	coop.Status = Closed
-		// // } else {
-		// // 	if we get here then it means the door is somewhere stuck in the middle
-		// // 	so let's close it to get to a good known state.
-		// // 	err := coop.close()
-		// // 	if err != nil {
-		// // 		logrus.Errorf("Error when closing the coop: %s", err)
-		// // 		return
-		// // 	}
+			if openlimitPin.Read() == rpio.Low {
+				logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Opened State")
+				coop.Status = Opened
+			} else if closelimitPin.Read() == rpio.Low {
+				logrus.Infoln("Hit the Door Top Limit switch, so the Coop is in Closed State")
+				coop.Status = Closed
+			} else {
+				// If we get here then it means the door is somewhere stuck in the middle
+				// so let's close it to get to a good known state.
+				err := coop.close()
+				if err != nil {
+					logrus.Errorf("Error when closing the coop: %s", err)
+					return
+				}
 
-		// // 	logrus.Infoln("The coop has been closed")
-		// // }
+				logrus.Infoln("The Coop is in Closed State")
+			}
+		}
 	case Opening:
 		logrus.Infoln("The coop is opening")
 	case Closing:

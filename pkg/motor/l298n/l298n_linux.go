@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"errors"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stianeikeland/go-rpio/v4"
@@ -53,7 +54,7 @@ func (motor *l298n) Forward(ctx context.Context) error {
 	pinEnable1 := rpio.Pin(motor.pinEnable1)
 	pinEnable1.Output()
 	pinEnable1.Pwm()
-	pinEnable1.Freq(1000)
+	pinEnable1.Freq(50 * 100)
 	pinEnable1.DutyCycle(0, 100)
 	
 	// Set the motor rotation
@@ -62,35 +63,40 @@ func (motor *l298n) Forward(ctx context.Context) error {
 	pinInput2.Low()
 
 	// Enable the motor
-	logrus.Infoln("Start the motor")
-	//pinEnable1.High()
-	pinEnable1.DutyCycle(60, 100)
+	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_dutycycle"))
+	logrus.Infof("Start the motor: PWM DutyCycle=%v", motorDutyCycle)
+	pinEnable1.DutyCycle(motorDutyCycle, 100)
 
 	// Wait
-	until, _ := ctx.Deadline()
-	logrus.Infoln("Wait until", until)
+	until, isDeadlineSet := ctx.Deadline()
+	if isDeadlineSet == true {
+		logrus.Infoln("Wait until", until)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
-			break;
+			logrus.Infoln("Motor stopped due to context cancellation")
+			pinEnable1.DutyCycle(0, 100)
+			logrus.Infoln("Motor is stopped")
+			return ctx.Err()
 		default:
 			if limitPin.Read() == rpio.Low {
-				logrus.Infoln("Hit the Door Top Limit switch")
-				break;
+				logrus.Infoln("Hit the Door Bottom Limit switch")
+				pinEnable1.DutyCycle(0, 100)
+				logrus.Infoln("Motor is stopped")
+				return nil
+			}
+
+			if time.Now().After(until) {
+				logrus.Infoln("Motor timeout, need to shutdown motor")
+				pinEnable1.DutyCycle(0, 100)
+				logrus.Infoln("Motor is stopped")
+				return errors.New("motor timeout")
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-	
-	// Disable the motor
-	logrus.Infoln("Stop the motor")
-	pinEnable1.DutyCycle(0, 100)
-	//pinEnable1.StopPwm()
-	//pinEnable1.Low()
-
-	logrus.Infoln("Door has been stopped")
-
-	return nil
 }
 
 // Backward turns the motor backward.
@@ -133,7 +139,7 @@ func (motor *l298n) Backward(ctx context.Context) error {
 	pinEnable1 := rpio.Pin(motor.pinEnable1)
 	pinEnable1.Output()
 	pinEnable1.Pwm()
-	pinEnable1.Freq(1000)
+	pinEnable1.Freq(50 * 100)
 	pinEnable1.DutyCycle(0, 100)
 
 	// Set the motor rotation
@@ -142,37 +148,40 @@ func (motor *l298n) Backward(ctx context.Context) error {
 	pinInput2.High()
 
 	// Enable the motor
-	logrus.Infoln("Start the motor")
-	//pinEnable1.High()
-	pinEnable1.DutyCycle(60, 100)
-
+	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_dutycycle"))
+	logrus.Infof("Start the motor: PWM DutyCycle=%v", motorDutyCycle)
+	pinEnable1.DutyCycle(motorDutyCycle, 100)
 
 	// Wait
-	until, _ := ctx.Deadline()
-	logrus.Infoln("Wait until", until)
+	until, isDeadlineSet := ctx.Deadline()
+	if isDeadlineSet == true {
+		logrus.Infoln("Wait until", until)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
-			break;
+			logrus.Infoln("Motor stopped due to context cancellation")
+			pinEnable1.DutyCycle(0, 100)
+			logrus.Infoln("Motor is stopped")
+			return ctx.Err()
 		default:
-			limitPin := rpio.Pin(closeDoorLimitPin)
 			if limitPin.Read() == rpio.Low {
 				logrus.Infoln("Hit the Door Bottom Limit switch")
-				break;
+				pinEnable1.DutyCycle(0, 100)
+				logrus.Infoln("Motor is stopped")
+				return nil
+			}
+
+			if time.Now().After(until) {
+				logrus.Infoln("Motor timeout, need to shutdown motor")
+				pinEnable1.DutyCycle(0, 100)
+				logrus.Infoln("Motor is stopped")
+				return errors.New("motor timeout")
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-
-	// Disable the motor
-	logrus.Infoln("Stop the motor")
-	pinEnable1.DutyCycle(0, 100)
-	//pinEnable1.StopPwm()
-	//pinEnable1.Low()
-
-	logrus.Infoln("Motor is stopped")
-
-	return nil
 }
 
 // Stop the motor.
@@ -194,10 +203,10 @@ func (motor *l298n) Stop() error {
 	pinEnable1 := rpio.Pin(motor.pinEnable1)
 	pinEnable1.Output()
 
-	// Set pinEnable1 to LOW
 	logrus.Infoln("Stop the motor")
-	pinEnable1.Low()
-
+	pinEnable1.Pwm()
+	pinEnable1.Freq(50 * 100)
+	pinEnable1.DutyCycle(0, 100)
 	logrus.Infoln("Motor has been stopped")
 
 	return nil

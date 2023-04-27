@@ -8,10 +8,12 @@ import (
 	"strings"
 	"text/template"
 	"encoding/json"
+	"encoding/base64"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/fallais/gocoop/internal/services"
 	"github.com/fallais/gocoop/pkg/coop"
+	"github.com/fallais/gocoop/pkg/camerastill"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -271,11 +273,11 @@ func (ctrl *MiscController) StopCoopDoorManually(w http.ResponseWriter, r *auth.
 	}
 
 	//TDB: need to expose
-	//err := ctrl.coopService.Stop()
-	//if(err != nil) {
-	//	logrus.WithError(err).Errorln("Error in manually stopping Coop Door")
-	//	return
-	//}
+	err := ctrl.coopService.Stop()
+	if(err != nil) {
+		logrus.WithError(err).Errorln("Error in manually stopping Coop Door")
+		return
+	}
 
 	ctrl.Index(w, r)
 }
@@ -310,4 +312,26 @@ func (ctrl *MiscController) GetCoopTemperature(w http.ResponseWriter, r *auth.Au
 	w.Header().Del("Content-Security-Policy")
 
     w.Write(jsonData)
+}
+
+// process capture request
+func (ctrl *MiscController) ProcessCaptureRequest(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	ImageWidth := 1080
+	ImageHeight := 720
+	var CameraParams map[string]interface{} = nil
+
+	bytes, err := camerastill.CaptureStillImage(camerastill.LibCameraStillBin, ImageWidth, ImageHeight, CameraParams)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+	}
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate, private")
+	w.Header().Del("Content-Security-Policy")
+
+	// Encode image as base64 and write image data to response
+	imgBase64 := base64.StdEncoding.EncodeToString(bytes)
+	w.Write([]byte(imgBase64))
 }

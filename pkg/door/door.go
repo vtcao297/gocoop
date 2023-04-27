@@ -19,6 +19,8 @@ type door struct {
 	closingDuration time.Duration
 }
 
+var cancelFunc      context.CancelFunc
+
 //------------------------------------------------------------------------------
 // Factory
 //------------------------------------------------------------------------------
@@ -42,6 +44,7 @@ func (d *door) Open() error {
 
 	// Create context
 	ctx, cancel := context.WithTimeout(context.Background(), d.openingDuration)
+	cancelFunc = cancel
 	defer cancel()
 
 	// Run the motor in forward
@@ -58,6 +61,7 @@ func (d *door) Close() error {
 
 	// Create context
 	ctx, cancel := context.WithTimeout(context.Background(), d.closingDuration)
+	cancelFunc = cancel
 	defer cancel()
 
 	// Run the motor in backward
@@ -70,12 +74,14 @@ func (d *door) Close() error {
 
 // Stop the door
 func (d *door) Stop() error {
-	logrus.Infoln("Stopping the door")
+	logrus.Infoln("Emergency stopping the door")
 
-	// Stop the motor
-	d.motor.Stop()
-
-	logrus.Infoln("Door has been stopped")
+	if cancelFunc != nil {
+		cancelFunc()
+	} else {
+		d.motor.Stop()
+		logrus.Infoln("Door has been stopped")
+	}
 
 	return nil
 }
