@@ -51,12 +51,11 @@ type Temperature interface {
 //------------------------------------------------------------------------------
 
 // NewTemperature returns a new Temperature.
-func NewTemperature(name, sensorType string, pin int, boostPerfFlag bool) Temperature {
+func NewTemperature(name, sensorType string, pin int) Temperature {
 	return &temperature{
 		name:          name,
 		sensorType:    sensorType,
 		pin:           pin,
-		boostPerfFlag: boostPerfFlag,
 	}
 }
 
@@ -190,8 +189,6 @@ func (temp *temperature) ReadTemp() (float32, float32, error) {
 	default:
 		return -1, -1, fmt.Errorf("Error: not support Temp/Humidity sensor type")
 	}
-
-	logrus.Infof("handshakeDur = %v", handshakeDur)
 
 	// Read sensor data from specific pin, retrying 10 times in case of failure.
 	err := rpio.Open()

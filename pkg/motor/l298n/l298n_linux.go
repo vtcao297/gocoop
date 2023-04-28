@@ -63,7 +63,7 @@ func (motor *l298n) Forward(ctx context.Context) error {
 	pinInput2.Low()
 
 	// Enable the motor
-	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_dutycycle"))
+	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_open_dutycycle"))
 	logrus.Infof("Start the motor: PWM DutyCycle=%v", motorDutyCycle)
 	pinEnable1.DutyCycle(motorDutyCycle, 100)
 
@@ -82,7 +82,7 @@ func (motor *l298n) Forward(ctx context.Context) error {
 			return ctx.Err()
 		default:
 			if limitPin.Read() == rpio.Low {
-				logrus.Infoln("Hit the Door Bottom Limit switch")
+				logrus.Infoln("Hit the Door Top Limit switch")
 				pinEnable1.DutyCycle(0, 100)
 				logrus.Infoln("Motor is stopped")
 				return nil
@@ -148,7 +148,7 @@ func (motor *l298n) Backward(ctx context.Context) error {
 	pinInput2.High()
 
 	// Enable the motor
-	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_dutycycle"))
+	motorDutyCycle := uint32(viper.GetInt("door.motor.pwm_close_dutycycle"))
 	logrus.Infof("Start the motor: PWM DutyCycle=%v", motorDutyCycle)
 	pinEnable1.DutyCycle(motorDutyCycle, 100)
 

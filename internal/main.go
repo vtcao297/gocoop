@@ -25,11 +25,19 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/gorilla/mux"
+	"github.com/stianeikeland/go-rpio/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // StaticFS is the embed for the static files.
 var StaticFS embed.FS
+
+const (
+	maxFailedAttempts = 5
+	throttleInterval  = 1 * time.Minute
+)
+
+var failedAttempts = make(map[string]int)
 
 // Run is a convenient function for Cobra.
 func Run(cmd *cobra.Command, args []string) {
@@ -50,6 +58,12 @@ func Run(cmd *cobra.Command, args []string) {
 	err = viper.ReadConfig(bytes.NewBuffer(data))
 	if err != nil {
 		logrus.WithError(err).Fatalln("Error when reading configuration data")
+	}
+
+	// Initialize RPIO
+	err = rpio.Open()
+	if err != nil {
+		logrus.WithError(err).Fatalln("Error opening GPIO")
 	}
 
 	// Motor
@@ -77,9 +91,9 @@ func Run(cmd *cobra.Command, args []string) {
 	// Notifiers
 	notifiers := system.SetupNotifiers()
 
-	// Temperatures
-	intempsensor := temperature.NewTemperature(viper.GetString("temperature.inside.name"), viper.GetString("temperature.inside.type"), viper.GetInt("temperature.inside.pin"), viper.GetBool("temperature.inside.boost"))
-	outtempsensor := temperature.NewTemperature(viper.GetString("temperature.outside.name"), viper.GetString("temperature.outside.type"), viper.GetInt("temperature.outside.pin"), viper.GetBool("temperature.outside.boost"))
+	// Temperatures and Fan
+	intempsensor := temperature.NewTemperature(viper.GetString("temperature.inside.name"), viper.GetString("temperature.inside.type"), viper.GetInt("temperature.inside.pin"))
+	outtempsensor := temperature.NewTemperature(viper.GetString("temperature.outside.name"), viper.GetString("temperature.outside.type"), viper.GetInt("temperature.outside.pin"))
 
 	// Create the coop instance
 	isAutomaticAtStartup := false
@@ -134,7 +148,7 @@ func Run(cmd *cobra.Command, args []string) {
 	router.HandleFunc("/coop/camera/still", authenticator.Wrap(miscCtrl.ProcessCaptureRequest))
 
 	// Load TLS certificate and private key
-	cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
+	cert, err := tls.LoadX509KeyPair(viper.GetString("general.tls_cert"), viper.GetString("general.tls_key"))
 	if err != nil {
 		logrus.WithError(err).Fatalln("failed to load TLS certificate and key")
 	}
@@ -166,7 +180,7 @@ func Run(cmd *cobra.Command, args []string) {
 // Secret holds the secret password.
 func Secret(user, realm string) string {
 	if user == viper.GetString("general.gui_username") {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(viper.GetString("general.gui_username")), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(viper.GetString("general.gui_password")), bcrypt.DefaultCost)
 		if err == nil {
 			return string(hashedPassword)
 		}

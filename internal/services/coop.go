@@ -8,6 +8,7 @@ import (
 	"github.com/fallais/gocoop/pkg/coop/conditions/sunbased"
 	"github.com/fallais/gocoop/pkg/coop/conditions/timebased"
 	"github.com/fallais/gocoop/pkg/temperature"
+	"github.com/fallais/gocoop/pkg/fan"
 	"github.com/spf13/viper"
 )
 
@@ -153,11 +154,24 @@ func (service *coopService) Stop() error {
 	return service.coop.Stop()
 }
 
+func coopTempFanHandler(tempInsideCoop float32) {
+	coopfan := fan.NewFan(uint8(viper.GetInt("fan.pin")))
+	insideTempLimit := viper.GetInt("fan.temp_limit")
+
+	if tempInsideCoop > float32(insideTempLimit) {
+		coopfan.On()
+	} else {
+		coopfan.Off()
+	}
+}
+
 func (service *coopService) GetTemp() (float32, float32, float32, float32, error) {
 	InsideTemp, InsideHumidity, err := service.InTempSensor.ReadTemp()
     if err != nil {
         return -1,-1,-1,-1,fmt.Errorf("Error reading temperature: %s\n", err.Error())
     }
+
+	go coopTempFanHandler(InsideTemp)
 
 	OutsideTemp, OutsideHumidity, err := service.OutTempSensor.ReadTemp()
     if err != nil {
